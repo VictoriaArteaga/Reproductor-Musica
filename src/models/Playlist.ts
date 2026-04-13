@@ -3,267 +3,190 @@ import { Song } from "./Song";
 
 export class Playlist {
 
-    private _firstSong: SongNode | null;
-    private _lastSong: SongNode | null;
-    private _length: number;
+    private _firstSong: SongNode | null = null;
+    private _lastSong: SongNode | null = null;
+    private _length: number = 0;
 
-    private _currentSong: SongNode | null;
-
-    constructor() {
-        this._firstSong = null;
-        this._lastSong = null;
-        this._length = 0;
-        this._currentSong = null;
-
-    }
-
-    // GETTERS.
-
-    get firstSong(): SongNode | null {
-        return this._firstSong;
-    }
-
-    get lastSong(): SongNode | null {
-        return this._lastSong;
-    }
-
-    get length(): number {
-        return this._length;
-    }
+    private _currentSong: SongNode | null = null;
 
     get currentSong(): SongNode | null {
-    return this._currentSong;
-}
+        return this._currentSong;
+    }
 
-    // MÉTODOS ESPECIALES.
+    public setCurrentSong(node: SongNode | null): void {
+        this._currentSong = node;
+    }
 
-    // 1. Agregar por el final de la lista.
     public appendSong(song: Song): void {
+        const newNode = new SongNode(song);
 
-        // Nuevo Nodo.
-        const newSongNode = new SongNode(song);
-
-        if (this._firstSong === null) {
-            this._firstSong = newSongNode;
-            this._lastSong = newSongNode;
-        }
-
-        else {
-
-            newSongNode.prevSong = this._lastSong;
-
-            if (this._lastSong != null) { this._lastSong.nextSong = newSongNode; }
-
-            this._lastSong = newSongNode;
+        if (!this._firstSong) {
+            this._firstSong = newNode;
+            this._lastSong = newNode;
+        } else {
+            newNode.prevSong = this._lastSong;
+            if (this._lastSong) this._lastSong.nextSong = newNode;
+            this._lastSong = newNode;
         }
 
         this._length++;
     }
 
-    // 2. Agregar por el inicio de la lista.
-    public prependSong(song: Song): void {
+    public remove(index: number): void {
 
-        const newSongNode = new SongNode(song);
+        if (index < 0 || index >= this._length) return;
 
-        if (this._firstSong ===  null) {
-            this._firstSong = newSongNode;
-            this._lastSong = newSongNode;
+        const node = this.traverseToIndex(index);
+        if (!node) return;
+
+        if (node === this._currentSong) {
+            this._currentSong = node.nextSong || node.prevSong;
         }
 
-        else {
+        if (node.prevSong) node.prevSong.nextSong = node.nextSong;
+        else this._firstSong = node.nextSong;
 
-            newSongNode.nextSong = this._firstSong;
-            this._firstSong.prevSong = newSongNode;
-            this._firstSong = newSongNode;
-        }
+        if (node.nextSong) node.nextSong.prevSong = node.prevSong;
+        else this._lastSong = node.prevSong;
 
-        this._length++;
-    }   
+        node.value.releasePreviewUrl();
 
-    // 3. Rastreador.
+        this._length--;
+    }
+
     public traverseToIndex(index: number): SongNode | null {
+        let current = this._firstSong;
+        let i = 0;
 
-        if (index < 0 || index >= this._length) return null;
-
-        let currentSong = this._firstSong;
-        let counter = 0;
-
-        while (counter !== index && currentSong !== null) {
-            currentSong = currentSong.nextSong;
-            counter++;
+        while (current && i < index) {
+            current = current.nextSong;
+            i++;
         }
 
-        return currentSong;
+        return current;
     }
 
-    // 4. Agregar en cualquier posición de la lista.
+    public playFirst(): SongNode | null {
+        this._currentSong = this._firstSong;
+        return this._currentSong;
+    }
+
+    public playNext(): SongNode | null {
+        if (!this._currentSong) return this.playFirst();
+
+        this._currentSong = this._currentSong.nextSong || this._firstSong;
+        return this._currentSong;
+    }
+
+    public playPrev(): SongNode | null {
+        if (!this._currentSong) return this.playFirst();
+
+        this._currentSong = this._currentSong.prevSong || this._lastSong;
+        return this._currentSong;
+    }
+
+    public toArray(): Song[] {
+        const result: Song[] = [];
+        let current = this._firstSong;
+
+        while (current) {
+            result.push(current.value);
+            current = current.nextSong;
+        }
+
+        return result;
+    }
+
+    //  MOVER DE POSICIÓN
+    public move(from: number, to: number): void {
+
+        if (from === to) return;
+
+        const node = this.traverseToIndex(from);
+        if (!node) return;
+
+        const isCurrent = node === this._currentSong;
+
+        // Desconectar nodo.
+        if (node.prevSong) node.prevSong.nextSong = node.nextSong;
+        else this._firstSong = node.nextSong;
+
+        if (node.nextSong) node.nextSong.prevSong = node.prevSong;
+        else this._lastSong = node.prevSong;
+
+        this._length--;
+
+        // Insertar nodo en nueva posición.
+        if (to <= 0) {
+            node.prevSong = null;
+            node.nextSong = this._firstSong;
+
+            if (this._firstSong) this._firstSong.prevSong = node;
+
+            this._firstSong = node;
+
+            if (!this._lastSong) this._lastSong = node;
+        } else if (to >= this._length) {
+            node.nextSong = null;
+            node.prevSong = this._lastSong;
+
+            if (this._lastSong) this._lastSong.nextSong = node;
+
+            this._lastSong = node;
+        } else {
+            const prev = this.traverseToIndex(to - 1);
+            if (!prev) return;
+
+            const next = prev.nextSong;
+
+            prev.nextSong = node;
+            node.prevSong = prev;
+
+            node.nextSong = next;
+            if (next) next.prevSong = node;
+        }
+
+        this._length++;
+
+        if (isCurrent) {
+            this._currentSong = node;
+        }
+    }
+
     public insert(song: Song, position: number): void {
 
-        // 1. Insertar por el inicio.
         if (position <= 0) {
-            this.prependSong(song);
+            const newNode = new SongNode(song);
+
+            newNode.nextSong = this._firstSong;
+            if (this._firstSong) this._firstSong.prevSong = newNode;
+
+            this._firstSong = newNode;
+
+            if (!this._lastSong) this._lastSong = newNode;
+
+            this._length++;
             return;
         }
 
-        // 2. Insertar por el final.
         if (position >= this._length) {
             this.appendSong(song);
             return;
         }
 
-        // 3. Insertar en medio.
-        const newSongNode = new SongNode(song);
-        const prevSongNode = this.traverseToIndex(position - 1);
+        const prev = this.traverseToIndex(position - 1);
+        if (!prev) return;
 
-        if (prevSongNode) {
-            const nextSongNode = prevSongNode.nextSong;
+        const newNode = new SongNode(song);
 
-            // Conectamos el anterior con el nuevo.
-            prevSongNode.nextSong = newSongNode;
-            newSongNode.prevSong = prevSongNode;
+        const next = prev.nextSong;
 
-            // Conectamos el nuevo con el siguiente.
-            newSongNode.nextSong = nextSongNode;
+        prev.nextSong = newNode;
+        newNode.prevSong = prev;
 
-            if (nextSongNode) {
-                nextSongNode.prevSong = newSongNode;
-            }
+        newNode.nextSong = next;
+        if (next) next.prevSong = newNode;
 
-            this._length++; 
-        } 
+        this._length++;
     }
-
-    // 5. Eliminar por posición.
-    public remove(position: number): void {
-
-    // Validación
-    if (position < 0 || position >= this._length) return;
-
-    let songNodeToRemove: SongNode | null = null;
-
-    // Eliminar inicio
-    if (position === 0) {
-        songNodeToRemove = this._firstSong;
-
-        this._firstSong = this._firstSong?.nextSong || null;
-
-        if (this._firstSong) {
-            this._firstSong.prevSong = null;
-        } else {
-            this._lastSong = null;
-        }
-    }
-
-    // Eliminar final
-    else if (position === this._length - 1) {
-        songNodeToRemove = this._lastSong;
-
-        this._lastSong = this._lastSong?.prevSong || null;
-
-        if (this._lastSong) {
-            this._lastSong.nextSong = null;
-        } else {
-            this._firstSong = null;
-        }
-    }
-
-    // Eliminar en medio
-    else {
-        const previousSongNode = this.traverseToIndex(position - 1);
-
-        if (previousSongNode && previousSongNode.nextSong) {
-            songNodeToRemove = previousSongNode.nextSong;
-
-            const nextSongNode = songNodeToRemove.nextSong;
-
-            previousSongNode.nextSong = nextSongNode;
-
-            if (nextSongNode) {
-                nextSongNode.prevSong = previousSongNode;
-            }
-        }
-    }
-
-    // si se elimina la que está sonando.
-    if (songNodeToRemove === this._currentSong) {
-        this._currentSong =
-            songNodeToRemove?.nextSong ||
-            songNodeToRemove?.prevSong ||
-            null;
-    }
-
-    // Liberar memoria
-    if (songNodeToRemove) {
-        songNodeToRemove.value.releasePreviewUrl();
-    }
-
-    this._length--;
-}
-
-    // 6. Mostrar las canciones.
-    public printPlaylist(): void {
-
-        let currentSong = this._firstSong;
-        let result: string[] = [];
-
-        while (currentSong !== null) {
-            if (currentSong.value) {
-            
-                result.push(currentSong.value.name);
-            }
-            currentSong = currentSong.nextSong;
-        }
-
-        console.log(result.join(" - "));
-    }
-
-    // REPRODUCCIÓN DE CANCIONES.
-
-    // 1. Reproducir siguiente canción.
-    public playNext(): SongNode | null {
-
-    if (!this._currentSong) {
-        return this.playFirst();
-    }
-
-    if (this._currentSong.nextSong) {
-        this._currentSong = this._currentSong.nextSong;
-    } else {
-        this._currentSong = this._firstSong; 
-    }
-
-    return this._currentSong; }
-
-    // 2. Reproducir canción anterior.
-    public playPrev(): SongNode | null {
-
-    if (!this._currentSong) {
-        return this.playFirst();
-    }
-
-    if (this._currentSong.prevSong) {
-        this._currentSong = this._currentSong.prevSong;
-    } else {
-        this._currentSong = this._lastSong; 
-    }
-
-    return this._currentSong; }
-
-    // 3. Reproducir primer canción.
-    public playFirst(): SongNode | null {
-    this._currentSong = this._firstSong;
-    return this._currentSong; }
-
-    // OBTENER LA LISTA COMO ARRAY.
-    public toArray(): Song[] {
-
-    let current = this._firstSong;
-    const songs: Song[] = [];
-
-    while (current !== null) {
-        songs.push(current.value);
-        current = current.nextSong;
-    }
-
-    return songs; }
 }
