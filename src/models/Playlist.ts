@@ -78,6 +78,16 @@ export class Playlist {
         return this._currentSong;
     }
 
+    public playAt(index: number): SongNode | null {
+        if (index < 0 || index >= this._length) return null;
+        
+        const node = this.traverseToIndex(index);
+        if (node) {
+            this._currentSong = node;
+        }
+        return node;
+    }
+
     public playPrev(): SongNode | null {
         if (!this._currentSong) return this.playFirst();
 
@@ -107,7 +117,7 @@ export class Playlist {
 
         const isCurrent = node === this._currentSong;
 
-        // Desconectar nodo.
+        // Desconectar Nodo.
         if (node.prevSong) node.prevSong.nextSong = node.nextSong;
         else this._firstSong = node.nextSong;
 
@@ -116,7 +126,7 @@ export class Playlist {
 
         this._length--;
 
-        // Insertar nodo en nueva posición.
+        // Insertar Nodo en nueva posición.
         if (to <= 0) {
             node.prevSong = null;
             node.nextSong = this._firstSong;
@@ -189,4 +199,30 @@ export class Playlist {
 
         this._length++;
     }
+
+    prepend(song: Song): void {
+    
+    const newNode = new SongNode(song);
+
+    if (this._firstSong === null) {
+
+        // Caso: La lista está vacía
+        this._firstSong = newNode;
+        this._lastSong = newNode;
+    } else {
+
+        // Caso: Ya existen canciones
+        
+        newNode.nextSong = this._firstSong;
+        this._firstSong.prevSong = newNode;
+        this._firstSong = newNode;
+    }
+
+    
+    if (this._currentSong === null) {
+        this._currentSong = newNode;
+    }
+
+    this._length++;
+}
 }

@@ -1,7 +1,7 @@
 import { usePlaylist } from "../hooks/usePlaylist";
 import SongForm from "../components/SongForm";
 import SongList from "../components/SongList";
-import PlayerControls from "../components/PlayerControls";
+import LivePlayerCard from "../components/LivePlayerCard";
 import { useState, useEffect } from "react";
 
 const Home = () => {
@@ -12,6 +12,7 @@ const Home = () => {
     } = usePlaylist();
 
     const [darkMode, setDarkMode] = useState(false);
+    const [showLivePlayer, setShowLivePlayer] = useState(false);
 
     useEffect(() => {
         const root = document.documentElement;
@@ -19,77 +20,120 @@ const Home = () => {
         else root.classList.remove("dark");
     }, [darkMode]);
 
+    useEffect(() => {
+        if (currentSong && isPlaying) {
+            setShowLivePlayer(true);
+        }
+    }, [currentSong, isPlaying]);
+
     const formatTime = (time: number) => {
-        if (!time) return "00:00";
+        if (!time || isNaN(time)) return "0:00";
         const minutes = Math.floor(time / 60);
         const seconds = Math.floor(time % 60);
         return `${minutes}:${seconds.toString().padStart(2, "0")}`;
     };
 
+    const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
+
+    const handleRenameSong = (index: number, newName: string) => {
+        if (index < songs.length && index >= 0) {
+            songs[index].name = newName;
+        }
+    };
+
+    const handleRenameArtist = (index: number, newArtist: string) => {
+        if (index < songs.length && index >= 0) {
+            songs[index].artist = newArtist;
+        }
+    };
+
+    const handleAddSong = (file: File, genre: string) => {
+        addSong(file, genre);
+    };
+
+    const handleCloseLivePlayer = () => {
+        if (isPlaying) {
+            togglePlay();
+        }
+        setShowLivePlayer(false);
+    };
+
     return (
-        <div className="container">
-            <h1>Reproductor de Música</h1>
-
-            <div style={{ textAlign: "center", marginBottom: "20px" }}>
-                <button onClick={() => setDarkMode(!darkMode)}>
-                    {darkMode ? " Modo Claro" : " Modo Oscuro"}
+        <div className="virelmi-app">
+            <header className="main-header">
+                <h1>Virelmi <span className="player-tag">Player</span></h1>
+                <button className="theme-toggle" onClick={() => setDarkMode(!darkMode)}>
+                    {darkMode ? "Modo Claro" : "Modo Oscuro"}
                 </button>
-            </div>
+            </header>
 
-            <div className="card">
-                <SongForm onAddSong={addSong} />
-            </div>
+            <main className="app-layout">
+                <aside className="sidebar">
+                    <div className="current-track-card">
+                        <div className="track-artwork">
+                            <img src="/player/Virelmi logo2.jpeg" alt="Virelmi Logo" className="virelmi-logo" />
+                        </div>
+                        <div className="track-details">
+                            <h2 className="track-title">
+                                {currentSong ? currentSong.name : "Sin reproducción"}
+                            </h2>
+                            <p className="track-artist">
+                                {currentSong ? currentSong.artist : "Listo para música"}
+                            </p>
+                        </div>
+                    </div>
 
-            <div className="card">
-                <PlayerControls
-                    onPlayPause={togglePlay}
-                    onNext={playNextSong}
-                    onPrev={playPreviousSong}
-                    isPlaying={isPlaying}
-                />
-            </div>
+                    <nav className="sidebar-nav">
+                        <h3 className="nav-title">Virelmi Player</h3>
+                        <ul>
+                            <li className="active">Mi Playlist</li>
+                        </ul>
+                    </nav>
+                </aside>
 
-            <div className="card info-reproduccion">
-                <p>
-                    {currentSong
-                        ? ` ${currentSong.name} - ${currentSong.artist}`
-                        : "Selecciona una canción"}
-                </p>
-            </div>
+                <section className="main-content">
+                    <div className="content-grid">
+                        <div className="white-card">
+                            <h2 className="card-title">Añadir Nueva Canción a la Playlist</h2>
+                            <SongForm onAddSong={handleAddSong} />
+                        </div>
 
-            <div className="card player-section">
-                <label>Progreso</label>
-                <input
-                    type="range"
-                    min={0}
-                    max={duration || 0}
-                    value={currentTime}
-                    onChange={(e) => seek(Number(e.target.value))}
-                    className="slider"
-                />
-                <p className="time">{formatTime(currentTime)} / {formatTime(duration)}</p>
+                        {currentSong && showLivePlayer && (
+                            <div className="live-player-wrapper">
+                                <LivePlayerCard
+                                    currentSong={currentSong}
+                                    isPlaying={isPlaying}
+                                    currentTime={currentTime}
+                                    duration={duration}
+                                    volume={volume}
+                                    onPlayPause={togglePlay}
+                                    onNext={playNextSong}
+                                    onPrev={playPreviousSong}
+                                    onSeek={seek}
+                                    onVolumeChange={changeVolume}
+                                    onClose={handleCloseLivePlayer}
+                                />
+                            </div>
+                        )}
 
-                <label>Volumen</label>
-                <input
-                    type="range"
-                    min={0} max={1} step={0.01}
-                    value={volume}
-                    onChange={(e) => changeVolume(Number(e.target.value))}
-                    className="slider"
-                />
-            </div>
+                        <div className="white-card">
+                            <h3 className="card-title">Tu Lista de Reproducción ({songs.length} canciones)</h3>
+                            
+                            <SongList
+                                songs={songs}
+                                onRemove={removeSong}
+                                onPlay={playSongAt}
+                                onMove={moveSong}
+                                onRenameSong={handleRenameSong}
+                                onRenameArtist={handleRenameArtist}
+                                currentIndex={currentSong ? songs.indexOf(currentSong) : -1}
+                                isPlaying={isPlaying}
+                            />
+                        </div>
+                    </div>
+                </section>
+            </main>
 
-            <div className="card">
-                <h3>Lista de Reproducción</h3>
-                <SongList
-                    songs={songs}
-                    onRemove={removeSong}
-                    onPlay={playSongAt}
-                    onMove={moveSong}
-                />
-            </div>
-
-            {/* Audio siempre presente para el Ref, src manejado por el hook */}
             <audio ref={audioRef} />
         </div>
     );

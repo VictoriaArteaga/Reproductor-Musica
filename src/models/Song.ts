@@ -3,14 +3,16 @@ export class Song {
     private _id: string;
     private _name: string;
     private _artist: string;
+    private _genre: string;
     private _file: File;
     private _previewUrl: string;
 
-    constructor(artist: string = "Desconocido", file: File) {
+    constructor(artist: string = "Desconocido", file: File, genre: string = "pop") {
 
         this._id = crypto.randomUUID();
         this._name = file.name; //Nombre del archivo como título inicial.
         this._artist = artist;
+        this._genre = genre;
         this._file = file;
 
         // Crear una URL temporal que el navegador entiende.
@@ -40,6 +42,16 @@ export class Song {
     set artist(newArtist: string) {
         if (newArtist.trim().length > 0) {
             this._artist = newArtist;
+        }
+    }
+
+    get genre(): string {
+        return this._genre;
+    }
+
+    set genre(newGenre: string) {
+        if (newGenre.trim().length > 0) {
+            this._genre = newGenre;
         }
     }
 
