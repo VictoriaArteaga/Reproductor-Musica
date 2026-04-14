@@ -91,7 +91,7 @@ export const usePlaylist = () => {
 
         const newSong = new Song("Artista Desconocido", file, genre);
         if (position === "start") {
-            target.playlist.prepend(newSong);
+            target.playlist.prependSong(newSong);
         } else if (position === "middle") {
             const mid = Math.floor(target.playlist.toArray().length / 2);
             target.playlist.insert(newSong, mid);

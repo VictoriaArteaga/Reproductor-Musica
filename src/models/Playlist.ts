@@ -200,7 +200,7 @@ export class Playlist {
         this._length++;
     }
 
-    prepend(song: Song): void {
+    prependSong(song: Song): void {
     
     const newNode = new SongNode(song);
 

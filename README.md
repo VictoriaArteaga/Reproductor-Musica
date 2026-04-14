@@ -25,7 +25,7 @@ El proyecto utiliza una **lista doblemente enlazada** (`Playlist.ts`) donde cada
 | Metodo | Descripcion |
 |---|---|
 | `appendSong(song)` | Agrega una cancion al **final** de la lista |
-| `prepend(song)` | Agrega una cancion al **inicio** de la lista |
+| `prependSong(song)` | Agrega una cancion al **inicio** de la lista |
 | `insert(song, position)` | Inserta una cancion en una **posicion especifica** (medio) |
 | `remove(index)` | Elimina una cancion por su indice |
 | `move(from, to)` | Mueve una cancion de una posicion a otra |
