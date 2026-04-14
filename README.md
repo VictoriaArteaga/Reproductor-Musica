@@ -1,73 +1,139 @@
-# React + TypeScript + Vite
+<h1 align="center">Virelm Player</h1>
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+<p align="center">
+  Reproductor de musica web desarrollado con React, TypeScript y Vite.
+  <br/>
+  Proyecto de la materia <strong>Estructuras de Datos</strong> — Universidad Cooperativa de Colombia.
+</p>
 
-Currently, two official plugins are available:
+<p align="center">
+  <a href="https://virelus-git-main-victoriaarteagas-projects.vercel.app">Ver en vivo</a>
+</p>
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+---
 
-## React Compiler
+## Descripcion
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Virelm Player es un reproductor de musica que implementa una **lista doblemente enlazada** como estructura de datos principal para gestionar playlists. Permite crear multiples playlists, agregar, eliminar, mover y reproducir canciones de forma interactiva desde el navegador.
 
-## Expanding the ESLint configuration
+## Estructura de Datos
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+El proyecto utiliza una **lista doblemente enlazada** (`Playlist.ts`) donde cada nodo (`SongNode.ts`) contiene una cancion (`Song.ts`) y referencias al nodo anterior y siguiente.
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+### Operaciones implementadas
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+| Metodo | Descripcion |
+|---|---|
+| `appendSong(song)` | Agrega una cancion al **final** de la lista |
+| `prepend(song)` | Agrega una cancion al **inicio** de la lista |
+| `insert(song, position)` | Inserta una cancion en una **posicion especifica** (medio) |
+| `remove(index)` | Elimina una cancion por su indice |
+| `move(from, to)` | Mueve una cancion de una posicion a otra |
+| `traverseToIndex(index)` | Recorre la lista hasta el indice indicado |
+| `playFirst()` | Reproduce la primera cancion |
+| `playNext()` | Avanza a la siguiente cancion (circular) |
+| `playPrev()` | Retrocede a la cancion anterior (circular) |
+| `playAt(index)` | Reproduce la cancion en un indice especifico |
+| `toArray()` | Convierte la lista enlazada a un arreglo |
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Funcionalidades
+
+### Gestion de Playlists
+- **Crear multiples playlists** con nombre personalizado
+- **Portada de playlist**: agregar imagen al crear o cambiarla despues
+- **Eliminar playlists** (minimo una siempre activa)
+- **Cambiar entre playlists** desde el sidebar o los chips
+- **Reproducir playlist completa** con un solo boton
+
+### Gestion de Canciones
+- **Agregar canciones** con tres opciones de posicion:
+  - Al inicio (`prepend`)
+  - En el medio (`insert`)
+  - Al final (`appendSong`)
+- **Seleccionar playlist destino** al agregar una cancion
+- **Eliminar canciones** de la lista
+- **Mover canciones** de posicion (subir/bajar)
+- **Cambiar nombre** de la cancion
+- **Cambiar artista** de la cancion
+- **Marcar como favorita** con el boton de corazon
+- **Boton de play individual** en cada cancion (se oculta cuando esta sonando)
+
+### Reproductor
+- Reproduccion con controles de **play/pausa**, **siguiente** y **anterior**
+- **Barra de progreso** interactiva (click para saltar a cualquier punto)
+- **Control de volumen**
+- Avance automatico a la siguiente cancion al terminar
+- Imagen rotando durante la reproduccion
+
+### Imagenes personalizadas
+- Cada cancion muestra la **imagen de su genero** musical por defecto
+- El usuario puede **cambiar la imagen** de cada cancion haciendo click en la miniatura
+- La imagen personalizada se refleja en la lista, el sidebar y el reproductor
+
+### Generos disponibles
+- Pop
+- Rock
+- Electronica
+- Folklore
+- Hip-Hop / Rap
+- Latino / Tropical
+- Reggaeton
+
+### Interfaz
+- Tema fresco con paleta de teal, coral, dorado y ciruela
+- Tipografia **Comfortaa** para el titulo, **Poppins** para el contenido
+- Cada cancion se muestra en su propia **card individual**
+- Card de "Reproduciendo Ahora" con fondo sutil de la imagen de la cancion
+- Sidebar claro con imagen de la playlist o del genero de la cancion actual
+- Multiples playlists visibles como chips interactivos
+
+## Tecnologias
+
+- **React 18** con hooks (`useState`, `useEffect`, `useRef`)
+- **TypeScript** para tipado estatico
+- **Vite** como bundler y servidor de desarrollo
+- **CSS** puro con variables CSS personalizadas
+- **Google Fonts** (Comfortaa, Poppins)
+
+## Estructura del proyecto
+
+```
+src/
+  models/
+    Song.ts          # Clase Song (datos de la cancion)
+    SongNode.ts      # Nodo de la lista doblemente enlazada
+    Playlist.ts      # Lista doblemente enlazada con todas las operaciones
+  hooks/
+    usePlaylist.ts   # Hook que conecta el modelo con la UI (multiples playlists)
+  components/
+    SongForm.tsx     # Formulario para agregar canciones
+    SongList.tsx     # Lista visual de canciones (cards)
+    SongItem.tsx     # Componente individual de cancion
+    LivePlayerCard.tsx # Card del reproductor "Reproduciendo Ahora"
+    PlayerControls.tsx # Controles de reproduccion
+  pages/
+    Home.tsx         # Pagina principal
+  assets/
+    styles/
+      global.css     # Estilos globales
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Como ejecutar
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+```bash
+# Instalar dependencias
+npm install
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+# Iniciar servidor de desarrollo
+npm run dev
+
+# Generar build de produccion
+npm run build
 ```
+
+## Autora
+
+***Maria Victoria Arteaga Revelo***
+---
+
+<p align="center"><em>Virelm Player</em></p>

@@ -6,6 +6,7 @@ export class Song {
     private _genre: string;
     private _file: File;
     private _previewUrl: string;
+    private _coverUrl: string | null = null;
 
     constructor(artist: string = "Desconocido", file: File, genre: string = "pop") {
 
@@ -63,8 +64,22 @@ export class Song {
         return this._previewUrl;
     }
 
+    get coverUrl(): string | null {
+        return this._coverUrl;
+    }
+
+    set coverUrl(url: string | null) {
+        if (this._coverUrl) {
+            URL.revokeObjectURL(this._coverUrl);
+        }
+        this._coverUrl = url;
+    }
+
     // Liberar URL temporal cuando ya no se necesite.
     public releasePreviewUrl() {
         URL.revokeObjectURL(this._previewUrl);
+        if (this._coverUrl) {
+            URL.revokeObjectURL(this._coverUrl);
+        }
     }
 }

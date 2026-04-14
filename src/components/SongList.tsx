@@ -1,5 +1,5 @@
 import { Song } from "../models/Song";
-import { useState } from "react";
+import { useState, useRef } from "react";
 
 interface SongListProps {
   songs: Song[];
@@ -11,6 +11,26 @@ interface SongListProps {
   currentIndex: number;
   isPlaying: boolean;
 }
+
+const genreImageMap: { [key: string]: string } = {
+  "folklore": "folklore.jpg",
+  "electrónica": "genero electronica.jpg",
+  "electronica": "genero electronica.jpg",
+  "pop": "genero pop.jpg",
+  "rock": "genero rock.jpg",
+  "hip-hop": "hi hop y rap.jpg",
+  "hip-hop/rap": "hi hop y rap.jpg",
+  "rapper": "hi hop y rap.jpg",
+  "latino": "latino y tropical.jpg",
+  "latino/tropical": "latino y tropical.jpg",
+  "reggaeton": "musica-reggaeton.jpg"
+};
+
+const getGenreImage = (genre: string) => {
+  const key = genre.toLowerCase();
+  const file = genreImageMap[key] || "genero pop.jpg";
+  return `/gener/${file}`;
+};
 
 const PlayLineIcon = () => (
   <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
@@ -30,12 +50,12 @@ const PlayLineIcon = () => (
 );
 
 const HeartIcon = ({ filled }: { filled: boolean }) => (
-  <svg 
-    width="20" 
-    height="20" 
-    viewBox="0 0 24 24" 
+  <svg
+    width="20"
+    height="20"
+    viewBox="0 0 24 24"
     fill={filled ? "currentColor" : "none"}
-    stroke="currentColor" 
+    stroke="currentColor"
     strokeWidth="2"
     className={`heart-icon-svg ${filled ? 'filled' : ''}`}
   >
@@ -44,17 +64,20 @@ const HeartIcon = ({ filled }: { filled: boolean }) => (
 );
 
 const SongList = ({ songs, onRemove, onPlay, onMove, onRenameSong, onRenameArtist, currentIndex, isPlaying }: SongListProps) => {
-  const [likedSongs, setLikedSongs] = useState<Set<number>>(new Set());
+  const [likedSongs, setLikedSongs] = useState<Set<string>>(new Set());
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editingField, setEditingField] = useState<"name" | "artist" | null>(null);
   const [editingValue, setEditingValue] = useState("");
+  const [, forceUpdate] = useState(0);
+  const coverInputRef = useRef<HTMLInputElement>(null);
+  const [coverTargetIndex, setCoverTargetIndex] = useState<number | null>(null);
 
-  const toggleLike = (index: number) => {
+  const toggleLike = (songId: string) => {
     const newLiked = new Set(likedSongs);
-    if (newLiked.has(index)) {
-      newLiked.delete(index);
+    if (newLiked.has(songId)) {
+      newLiked.delete(songId);
     } else {
-      newLiked.add(index);
+      newLiked.add(songId);
     }
     setLikedSongs(newLiked);
   };
@@ -90,26 +113,75 @@ const SongList = ({ songs, onRemove, onPlay, onMove, onRenameSong, onRenameArtis
     setEditingValue("");
   };
 
+  const handleCoverClick = (index: number) => {
+    setCoverTargetIndex(index);
+    coverInputRef.current?.click();
+  };
+
+  const handleCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file && coverTargetIndex !== null && coverTargetIndex < songs.length) {
+      const url = URL.createObjectURL(file);
+      songs[coverTargetIndex].coverUrl = url;
+      forceUpdate(n => n + 1);
+    }
+    if (coverInputRef.current) {
+      coverInputRef.current.value = "";
+    }
+    setCoverTargetIndex(null);
+  };
+
   return (
     <div className="songs-container">
+      <input
+        ref={coverInputRef}
+        type="file"
+        accept="image/*"
+        style={{ display: "none" }}
+        onChange={handleCoverChange}
+      />
       {songs.length === 0 ? (
         <p className="no-songs-msg">No hay canciones en la lista</p>
       ) : (
         <ul className="song-list">
           {songs.map((song, index) => (
-            <li key={index} className={`song-item-row ${currentIndex === index ? 'currently-playing' : ''}`}>
+            <li key={song.id} className={`song-item-row ${currentIndex === index ? 'currently-playing' : ''}`}>
               <div className="song-item-label">
                 <span className="song-number">{index + 1}</span>
                 <span className="song-playing-icon" style={{ display: currentIndex === index && isPlaying ? 'block' : 'none' }}>
                   <PlayLineIcon />
                 </span>
               </div>
-              
-              <div className="song-info-wrapper" onClick={() => onPlay(index)}>
-                <span className="song-icon">🎵</span>
+
+              <div className="song-info-wrapper">
+                {!(currentIndex === index && isPlaying) && (
+                  <button
+                    className="song-play-btn"
+                    onClick={() => onPlay(index)}
+                    title="Reproducir"
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="white">
+                      <polygon points="5 3 19 12 5 21 5 3" />
+                    </svg>
+                  </button>
+                )}
+                <span
+                  className="song-cover-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleCoverClick(index);
+                  }}
+                  title="Cambiar imagen"
+                >
+                  <img
+                    src={song.coverUrl || getGenreImage(song.genre)}
+                    alt={song.coverUrl ? "cover" : song.genre}
+                    className="song-cover-img"
+                  />
+                </span>
                 <div className="song-text-details">
                   {editingIndex === index && editingField === "name" ? (
-                    <input 
+                    <input
                       type="text"
                       value={editingValue}
                       onChange={(e) => setEditingValue(e.target.value)}
@@ -126,7 +198,7 @@ const SongList = ({ songs, onRemove, onPlay, onMove, onRenameSong, onRenameArtis
                     <p className="song-item-name">{song.name}</p>
                   )}
                   {editingIndex === index && editingField === "artist" ? (
-                    <input 
+                    <input
                       type="text"
                       value={editingValue}
                       onChange={(e) => setEditingValue(e.target.value)}
@@ -148,8 +220,8 @@ const SongList = ({ songs, onRemove, onPlay, onMove, onRenameSong, onRenameArtis
               <div className="song-actions">
                 <div className="move-buttons">
                   {songs.length === 1 ? null : index === 0 ? (
-                    <button 
-                      onClick={() => onMove(index, index + 1)} 
+                    <button
+                      onClick={() => onMove(index, index + 1)}
                       disabled={index === songs.length - 1}
                       className="btn-move btn-down"
                       title="Bajar"
@@ -157,8 +229,8 @@ const SongList = ({ songs, onRemove, onPlay, onMove, onRenameSong, onRenameArtis
                       ↓
                     </button>
                   ) : index === songs.length - 1 ? (
-                    <button 
-                      onClick={() => onMove(index, index - 1)} 
+                    <button
+                      onClick={() => onMove(index, index - 1)}
                       disabled={index === 0}
                       className="btn-move btn-up"
                       title="Subir"
@@ -167,16 +239,16 @@ const SongList = ({ songs, onRemove, onPlay, onMove, onRenameSong, onRenameArtis
                     </button>
                   ) : (
                     <>
-                      <button 
-                        onClick={() => onMove(index, index - 1)} 
+                      <button
+                        onClick={() => onMove(index, index - 1)}
                         disabled={index === 0}
                         className="btn-move btn-up"
                         title="Subir"
                       >
                         ↑
                       </button>
-                      <button 
-                        onClick={() => onMove(index, index + 1)} 
+                      <button
+                        onClick={() => onMove(index, index + 1)}
                         disabled={index === songs.length - 1}
                         className="btn-move btn-down"
                         title="Bajar"
@@ -186,29 +258,29 @@ const SongList = ({ songs, onRemove, onPlay, onMove, onRenameSong, onRenameArtis
                     </>
                   )}
                 </div>
-                <button 
-                  className="btn-text-action" 
+                <button
+                  className="btn-text-action"
                   onClick={() => startEditName(index, song.name)}
                   title="Cambiar nombre de canción"
                 >
-                  Cambiar Canción
+                  Cambiar Nombre
                 </button>
-                <button 
-                  className="btn-text-action" 
+                <button
+                  className="btn-text-action"
                   onClick={() => startEditArtist(index, song.artist)}
                   title="Cambiar nombre del artista"
                 >
                   Cambiar Artista
                 </button>
-                <button 
-                  className="btn-heart" 
-                  onClick={() => toggleLike(index)}
+                <button
+                  className="btn-heart"
+                  onClick={() => toggleLike(song.id)}
                   title="Me gusta"
                 >
-                  <HeartIcon filled={likedSongs.has(index)} />
+                  <HeartIcon filled={likedSongs.has(song.id)} />
                 </button>
-                <button 
-                  className="btn-delete" 
+                <button
+                  className="btn-delete"
                   onClick={() => onRemove(index)}
                   title="Eliminar"
                 >

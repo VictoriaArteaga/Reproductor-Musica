@@ -66,6 +66,7 @@ const LivePlayerCard = ({
 
     const genreKey = currentSong.genre.toLowerCase();
     const genreImage = genreImageMap[genreKey] || "genero pop.jpg";
+    const displayImage = currentSong.coverUrl || `/gener/${genreImage}`;
     const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
 
     const formatTime = (seconds: number): string => {
@@ -76,7 +77,11 @@ const LivePlayerCard = ({
     };
 
     return (
-        <div className="live-player-card">
+        <div className="live-player-card" style={{ position: 'relative', overflow: 'hidden' }}>
+            <div
+                className="live-player-bg"
+                style={{ backgroundImage: `url(${displayImage})` }}
+            />
             <div className="live-player-header">
                 <h3>Reproduciendo Ahora</h3>
                 <button className="live-player-close-btn" onClick={onClose} title="Cerrar">
@@ -87,7 +92,7 @@ const LivePlayerCard = ({
             <div className="live-player-content">
                 <div className="live-player-image-container">
                     <div className={`live-player-image ${isPlaying ? 'rotating' : ''}`}>
-                        <img src={`/gener/${genreImage}`} alt={currentSong.genre} />
+                        <img src={displayImage} alt={currentSong.genre} />
                     </div>
                 </div>
 

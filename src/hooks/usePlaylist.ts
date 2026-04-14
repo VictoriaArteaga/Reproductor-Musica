@@ -2,10 +2,27 @@ import { useRef, useState, useEffect } from "react";
 import { Playlist } from "../models/Playlist";
 import { Song } from "../models/Song";
 
+export type PlaylistInfo = {
+    id: string;
+    name: string;
+    playlist: Playlist;
+    coverUrl: string | null;
+};
+
+const createDefaultPlaylist = (): { playlists: PlaylistInfo[]; defaultId: string } => {
+    const id = crypto.randomUUID();
+    return {
+        playlists: [{ id, name: "Mi Playlist", playlist: new Playlist(), coverUrl: null }],
+        defaultId: id
+    };
+};
+
 export const usePlaylist = () => {
-    // Referencia persistente a la estructura de datos
-    const playlist = useRef(new Playlist());
-    
+    const initial = useRef(createDefaultPlaylist());
+
+    const [playlists, setPlaylists] = useState<PlaylistInfo[]>(initial.current.playlists);
+    const [activePlaylistId, setActivePlaylistId] = useState(initial.current.defaultId);
+
     // Estados para reactividad de la UI
     const [songs, setSongs] = useState<Song[]>([]);
     const [currentSong, setCurrentSong] = useState<Song | null>(null);
@@ -16,22 +33,37 @@ export const usePlaylist = () => {
 
     const audioRef = useRef<HTMLAudioElement | null>(null);
 
-    // Función de sincronización para actualizar la UI según el modelo
-    const syncWithModel = () => {
-        const songsArray = playlist.current.toArray();
-        setSongs(songsArray);
-        setCurrentSong(playlist.current.currentSong?.value || null);
+    // Referencia mutable para acceder siempre al estado actual
+    const playlistsRef = useRef(playlists);
+    playlistsRef.current = playlists;
+
+    const activeIdRef = useRef(activePlaylistId);
+    activeIdRef.current = activePlaylistId;
+
+    const getActive = () => {
+        return playlistsRef.current.find(p => p.id === activeIdRef.current) || playlistsRef.current[0];
     };
+
+    const syncWithModel = () => {
+        const active = getActive();
+        setSongs(active.playlist.toArray());
+        setCurrentSong(active.playlist.currentSong?.value || null);
+    };
+
+    // Sync cuando cambia la playlist activa
+    useEffect(() => {
+        syncWithModel();
+    }, [activePlaylistId]);
 
     const togglePlay = async () => {
         const audio = audioRef.current;
         if (!audio) return;
 
-        let currentNode = playlist.current.currentSong;
+        const active = getActive();
+        let currentNode = active.playlist.currentSong;
 
-        // Si no hay canción seleccionada, intenta poner la primera
         if (!currentNode) {
-            currentNode = playlist.current.playFirst();
+            currentNode = active.playlist.playFirst();
             if (!currentNode) return;
             syncWithModel();
         }
@@ -52,18 +84,36 @@ export const usePlaylist = () => {
         }
     };
 
-    const addSong = (file: File, genre: string = "pop") => {
+    const addSong = (file: File, genre: string = "pop", position: "start" | "end" | "middle" = "end", playlistId?: string) => {
+        const targetId = playlistId || activeIdRef.current;
+        const target = playlistsRef.current.find(p => p.id === targetId);
+        if (!target) return;
+
         const newSong = new Song("Artista Desconocido", file, genre);
-        playlist.current.appendSong(newSong);
-        syncWithModel();
+        if (position === "start") {
+            target.playlist.prepend(newSong);
+        } else if (position === "middle") {
+            const mid = Math.floor(target.playlist.toArray().length / 2);
+            target.playlist.insert(newSong, mid);
+        } else {
+            target.playlist.appendSong(newSong);
+        }
+
+        // Forzar re-render de playlists para actualizar contadores
+        setPlaylists([...playlistsRef.current]);
+
+        if (targetId === activeIdRef.current) {
+            syncWithModel();
+        }
     };
 
     const removeSong = (index: number) => {
-        playlist.current.remove(index);
+        const active = getActive();
+        active.playlist.remove(index);
+        setPlaylists([...playlistsRef.current]);
         syncWithModel();
-        
-        // Si la lista queda vacía, detenemos el audio
-        if (playlist.current.toArray().length === 0) {
+
+        if (active.playlist.toArray().length === 0) {
             setIsPlaying(false);
             if (audioRef.current) {
                 audioRef.current.pause();
@@ -73,7 +123,8 @@ export const usePlaylist = () => {
     };
 
     const next = () => {
-        const node = playlist.current.playNext();
+        const active = getActive();
+        const node = active.playlist.playNext();
         if (node && audioRef.current) {
             audioRef.current.src = node.value.previewUrl;
             audioRef.current.play();
@@ -83,7 +134,8 @@ export const usePlaylist = () => {
     };
 
     const prev = () => {
-        const node = playlist.current.playPrev();
+        const active = getActive();
+        const node = active.playlist.playPrev();
         if (node && audioRef.current) {
             audioRef.current.src = node.value.previewUrl;
             audioRef.current.play();
@@ -107,11 +159,13 @@ export const usePlaylist = () => {
         };
         const handleEnded = () => {
             setIsPlaying(false);
-            const node = playlist.current.playNext();
+            const active = playlistsRef.current.find(p => p.id === activeIdRef.current) || playlistsRef.current[0];
+            const node = active.playlist.playNext();
             if (node && audio) {
                 audio.src = node.value.previewUrl;
                 audio.play();
-                syncWithModel();
+                setSongs(active.playlist.toArray());
+                setCurrentSong(active.playlist.currentSong?.value || null);
             }
         };
         const handlePlay = () => setIsPlaying(true);
@@ -132,13 +186,13 @@ export const usePlaylist = () => {
         };
     }, []);
 
-    // Actualizar volumen cuando cambie el estado
     useEffect(() => {
         if (audioRef.current) audioRef.current.volume = volume;
     }, [volume]);
 
     const playSongAt = async (index: number) => {
-        const node = playlist.current.playAt(index);
+        const active = getActive();
+        const node = active.playlist.playAt(index);
         if (node && audioRef.current) {
             audioRef.current.src = node.value.previewUrl;
             try {
@@ -152,7 +206,8 @@ export const usePlaylist = () => {
     };
 
     const moveSong = (from: number, to: number) => {
-        playlist.current.move(from, to);
+        const active = getActive();
+        active.playlist.move(from, to);
         syncWithModel();
     };
 
@@ -167,6 +222,42 @@ export const usePlaylist = () => {
         setVolume(vol);
     };
 
+    const createPlaylist = (name: string, coverUrl: string | null = null) => {
+        const newPlaylist: PlaylistInfo = {
+            id: crypto.randomUUID(),
+            name,
+            playlist: new Playlist(),
+            coverUrl
+        };
+        setPlaylists(prev => [...prev, newPlaylist]);
+        return newPlaylist.id;
+    };
+
+    const updatePlaylistCover = (id: string, coverUrl: string) => {
+        const target = playlistsRef.current.find(p => p.id === id);
+        if (target) {
+            target.coverUrl = coverUrl;
+            setPlaylists([...playlistsRef.current]);
+        }
+    };
+
+    const deletePlaylist = (id: string) => {
+        if (playlistsRef.current.length <= 1) return;
+        const remaining = playlistsRef.current.filter(p => p.id !== id);
+        setPlaylists(remaining);
+        if (activeIdRef.current === id) {
+            setActivePlaylistId(remaining[0].id);
+        }
+    };
+
+    const switchPlaylist = (id: string) => {
+        if (isPlaying && audioRef.current) {
+            audioRef.current.pause();
+            setIsPlaying(false);
+        }
+        setActivePlaylistId(id);
+    };
+
     return {
         songs,
         currentSong,
@@ -175,6 +266,8 @@ export const usePlaylist = () => {
         currentTime,
         duration,
         volume,
+        playlists,
+        activePlaylistId,
         addSong,
         removeSong,
         togglePlay,
@@ -183,6 +276,10 @@ export const usePlaylist = () => {
         playSongAt,
         moveSong,
         seek,
-        changeVolume
+        changeVolume,
+        createPlaylist,
+        deletePlaylist,
+        switchPlaylist,
+        updatePlaylistCover
     };
 };
